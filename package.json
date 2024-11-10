@@ -3,7 +3,7 @@
 	"displayName": "MCFunction Auto Macro Prefix",
 	"description": "Automatically adds a $ prefix to lines including $()",
 	"version": "0.1.0",
-	"author": "9799ms",
+	"author": "malte9799",
 	"repository": "https://github.com/malte9799/mcfunction-auto-macro-prefix",
 	"engines": {
 		"vscode": "^1.75.0"
