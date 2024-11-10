@@ -1,0 +1,37 @@
+{
+	"name": "mcfunction-auto-macro-prefix",
+	"displayName": "MCFunction Auto Macro Prefix",
+	"description": "Automatically adds a $ prefix to lines including $()",
+	"version": "0.1.0",
+	"author": "9799ms",
+	"engines": {
+		"vscode": "^1.75.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"activationEvents": [
+		"onLanguage:mcfunction"
+	],
+	"main": "./out/extension.js",
+	"contributes": {
+		"languages": [
+			{
+				"id": "mcfunction",
+				"extensions": [
+					".mcfunction"
+				]
+			}
+		]
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run compile",
+		"compile": "tsc -p ./",
+		"watch": "tsc -watch -p ./"
+	},
+	"devDependencies": {
+		"@types/node": "^16.11.7",
+		"@types/vscode": "^1.75.0",
+		"typescript": "^4.9.4"
+	}
+}
