@@ -25,7 +25,27 @@ When Typing to fast the cursor gets missplaced sometimes.
 
 Initial release
 
-### 0.0.1
+### 0.1.0
 
 - Automatically adds a \$ prefix to lines including a macro string [\$(`<variable>`)]
 - makes the $ prefix Invisible and adds an indicator to that line
+
+### 0.1.1
+
+- added support for Multiline commands
+
+  - ```mcfunction
+    execute run \
+     say $(test)
+
+    V0.1.0 ->
+    execute run \
+    $ say $(test)
+
+    V0.1.1 ->
+    $execute run \
+     say $(test)
+
+    ```
+
+- added support for Comments. So lines starting with "#" get ignored

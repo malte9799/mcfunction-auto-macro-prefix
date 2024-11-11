@@ -16,42 +16,77 @@ export function activate(context: vscode.ExtensionContext) {
 		return document?.fileName.endsWith('.mcfunction') ?? false;
 	}
 
-	async function updateLine(editor: vscode.TextEditor, line: number, text: string) {
-		const hasPattern = /\$\([a-zA-Z_]+\)/.test(text);
-		const startsWithDollar = text.startsWith('$');
+	function getCompleteCommand(document: vscode.TextDocument, startLine: number): { text: string[]; endLine: number } {
+		let currentLine = startLine;
+		let lines: string[] = [document.lineAt(currentLine).text];
 
-		let newText = text;
-		let cursorAdjustment = 0;
-
-		if (hasPattern && !startsWithDollar) {
-			newText = '$' + text;
-			cursorAdjustment = 1;
-		} else if (!hasPattern && startsWithDollar) {
-			newText = text.substring(1);
-			cursorAdjustment = -1;
+		while (lines[lines.length - 1].trimEnd().endsWith('\\') && currentLine < document.lineCount - 1) {
+			currentLine++;
+			lines.push(document.lineAt(currentLine).text);
 		}
 
-		if (newText !== text) {
-			const currentPosition = editor.selection.active;
-			const isActiveLine = currentPosition.line === line;
-			const cursorColumn = currentPosition.character;
+		return {
+			text: lines,
+			endLine: currentLine,
+		};
+	}
 
-			await editor.edit(
-				(editBuilder) => {
-					const lineRange = editor.document.lineAt(line).range;
-					editBuilder.replace(lineRange, newText);
-				},
-				{ undoStopBefore: false, undoStopAfter: false }
-			);
+	async function updateMultiLineCommand(editor: vscode.TextEditor, startLine: number, lines: string[]) {
+		// if (lines[0].trimStart().startsWith('#')) {
+		// 	return false;
+		// }
 
-			// Adjust cursor position if we're on the edited line
-			if (isActiveLine && cursorAdjustment !== 0) {
-				const newPosition = currentPosition.with(currentPosition.line, Math.max(0, cursorColumn + cursorAdjustment));
-				editor.selection = new vscode.Selection(newPosition, newPosition);
+		const fullText = lines.join('');
+		const hasPattern = /\$\([a-zA-Z_]+\)/.test(fullText);
+		const firstLineStartsWithDollar = lines[0].trimStart().startsWith('$');
+		const isComment = lines[0].trimStart().startsWith('#');
+		const newLines = [...lines];
+
+		// For multi-line commands
+		if (lines.length > 1) {
+			// If there's a pattern, ensure only first line has $ and others don't
+			if (hasPattern) {
+				if (!firstLineStartsWithDollar && !isComment) {
+					newLines[0] = '$' + newLines[0];
+				}
+				// Remove $ from all other lines if they have it
+				for (let i = 1; i < newLines.length; i++) {
+					if (newLines[i].startsWith('$')) {
+						newLines[i] = newLines[i].substring(1);
+					}
+				}
+			} else {
+				// No pattern, remove $ from all lines
+				for (let i = 0; i < newLines.length; i++) {
+					if (newLines[i].startsWith('$')) {
+						newLines[i] = newLines[i].substring(1);
+					}
+				}
+			}
+		} else {
+			// Single line command
+			if (hasPattern && !firstLineStartsWithDollar && !isComment) {
+				newLines[0] = '$' + newLines[0];
+			} else if (!hasPattern && firstLineStartsWithDollar) {
+				newLines[0] = newLines[0].substring(1);
 			}
 		}
 
-		return hasPattern || startsWithDollar;
+		// Apply changes if needed
+		for (let i = 0; i < newLines.length; i++) {
+			if (newLines[i] !== lines[i]) {
+				const lineNumber = startLine + i;
+				await editor.edit(
+					(editBuilder) => {
+						const lineRange = editor.document.lineAt(lineNumber).range;
+						editBuilder.replace(lineRange, newLines[i]);
+					},
+					{ undoStopBefore: false, undoStopAfter: false }
+				);
+			}
+		}
+
+		return hasPattern;
 	}
 
 	async function updateDecorations() {
@@ -61,16 +96,18 @@ export function activate(context: vscode.ExtensionContext) {
 
 		const dollarDecorations: vscode.DecorationOptions[] = [];
 		const document = activeEditor.document;
+		let lineIndex = 0;
 
-		for (let lineIndex = 0; lineIndex < document.lineCount; lineIndex++) {
-			const lineText = document.lineAt(lineIndex).text;
-			const needsDecoration = await updateLine(activeEditor, lineIndex, lineText);
+		while (lineIndex < document.lineCount) {
+			const { text: lines, endLine } = getCompleteCommand(document, lineIndex);
+			const needsDecoration = await updateMultiLineCommand(activeEditor, lineIndex, lines);
 
-			if (needsDecoration) {
+			if (needsDecoration && lines.length > 0 && lines[0].startsWith('$')) {
 				const dollarRange = new vscode.Range(new vscode.Position(lineIndex, 0), new vscode.Position(lineIndex, 1));
-
 				dollarDecorations.push({ range: dollarRange });
 			}
+
+			lineIndex = endLine + 1;
 		}
 
 		activeEditor.setDecorations(dollarDecorationType, dollarDecorations);
