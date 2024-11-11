@@ -49,3 +49,8 @@ Initial release
     ```
 
 - added support for Comments. So lines starting with "#" get ignored
+
+### 0.1.2
+
+- The cursor now gets placed correctly
+- macro variable names can now include numbers

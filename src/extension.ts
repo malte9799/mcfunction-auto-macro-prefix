@@ -37,10 +37,15 @@ export function activate(context: vscode.ExtensionContext) {
 		// }
 
 		const fullText = lines.join('');
-		const hasPattern = /\$\([a-zA-Z_]+\)/.test(fullText);
+		const hasPattern = /\$\([a-zA-Z_1-9]+\)/.test(fullText);
 		const firstLineStartsWithDollar = lines[0].trimStart().startsWith('$');
 		const isComment = lines[0].trimStart().startsWith('#');
 		const newLines = [...lines];
+
+		const currentPosition = editor.selection.active;
+		let cursorAdjustment = 0;
+		const cursorLine = currentPosition.line - startLine;
+		const cursorColumn = currentPosition.character;
 
 		// For multi-line commands
 		if (lines.length > 1) {
@@ -48,26 +53,31 @@ export function activate(context: vscode.ExtensionContext) {
 			if (hasPattern) {
 				if (!firstLineStartsWithDollar && !isComment) {
 					newLines[0] = '$' + newLines[0];
+					if (cursorLine === 0) cursorAdjustment = 1;
 				}
 				// Remove $ from all other lines if they have it
 				for (let i = 1; i < newLines.length; i++) {
-					if (newLines[i].startsWith('$')) {
+					if (newLines[i].trimStart().startsWith('$')) {
 						newLines[i] = newLines[i].substring(1);
+						if (cursorLine === i) cursorAdjustment = -1;
 					}
 				}
 			} else {
 				// No pattern, remove $ from all lines
 				for (let i = 0; i < newLines.length; i++) {
-					if (newLines[i].startsWith('$')) {
+					if (newLines[i].trimStart().startsWith('$')) {
 						newLines[i] = newLines[i].substring(1);
+						if (cursorLine === i) cursorAdjustment = -1;
 					}
 				}
 			}
 		} else {
 			// Single line command
 			if (hasPattern && !firstLineStartsWithDollar && !isComment) {
+				cursorAdjustment = 1;
 				newLines[0] = '$' + newLines[0];
 			} else if (!hasPattern && firstLineStartsWithDollar) {
+				cursorAdjustment = -1;
 				newLines[0] = newLines[0].substring(1);
 			}
 		}
@@ -84,6 +94,11 @@ export function activate(context: vscode.ExtensionContext) {
 					{ undoStopBefore: false, undoStopAfter: false }
 				);
 			}
+		}
+
+		if (cursorAdjustment !== 0) {
+			const newPosition = currentPosition.with(currentPosition.line, Math.max(0, cursorColumn + cursorAdjustment));
+			editor.selection = new vscode.Selection(newPosition, newPosition);
 		}
 
 		return hasPattern;

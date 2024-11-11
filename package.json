@@ -2,7 +2,7 @@
 	"name": "mcfunction-auto-macro-prefix",
 	"displayName": "MCFunction Auto Macro Prefix",
 	"description": "Automatically adds a $ prefix to lines including $()",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"author": "malte9799",
 	"publisher": "malte9799",
 	"license": "MIT",
